@@ -896,41 +896,76 @@ private loadKaryawanData() {
 
       if (type === 'bingkai') {
         const templatePath = path.join(templatesDir, 'template_bingkai.jpg');
-        // Wooden frame inner canvas opening: left=196, top=468, width=422, height=556
-        const fW = 422, fH = 556;
-        const photoResized = await sharp(imageBuffer).resize(fW, fH, { fit: 'cover' }).toBuffer();
+        // Wooden frame inner canvas opening: left=190, top=468, width=416, height=588
+        const fW = 416, fH = 588;
+        const circleX = Math.round(fW / 2); // 208 - dead center horizontally
+        const circleY = 270; // visually balanced vertically in frame
+        const circleR = 165;
+        const diameter = circleR * 2; // 330
 
-        let plaqueOverlay = '';
-        if (customText.trim()) {
-          const cleanText = customText.trim().replace(/[<>&'"]/g, '').substring(0, 24);
-          plaqueOverlay = `
-            <rect x="${fW / 2 - 120}" y="${fH - 46}" width="240" height="34" rx="6" fill="#0f172a" fill-opacity="0.85" stroke="#ffffff" stroke-width="1"/>
-            <text x="${fW / 2}" y="${fH - 24}" font-size="13" font-family="sans-serif" font-weight="bold" fill="#ffffff" letter-spacing="1" text-anchor="middle">${cleanText}</text>
-          `;
-        }
+        const photoCropped = await sharp(imageBuffer)
+          .resize(diameter, diameter, { fit: 'cover' })
+          .toBuffer();
 
-        const glassSvg = Buffer.from(`
-          <svg width="${fW}" height="${fH}">
-            <defs>
-              <linearGradient id="glassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
-                <stop offset="35%" stop-color="#ffffff" stop-opacity="0.04"/>
-                <stop offset="70%" stop-color="#000000" stop-opacity="0.06"/>
-                <stop offset="100%" stop-color="#000000" stop-opacity="0.24"/>
-              </linearGradient>
-            </defs>
-            <rect width="${fW}" height="${fH}" fill="url(#glassGrad)"/>
-            <rect width="${fW}" height="${fH}" fill="none" stroke="#000000" stroke-width="4" stroke-opacity="0.4"/>
-            ${plaqueOverlay}
+        const circleMask = Buffer.from(`
+          <svg width="${diameter}" height="${diameter}">
+            <circle cx="${circleR}" cy="${circleR}" r="${circleR}" fill="white"/>
           </svg>
         `);
 
-        const canvasFinal = await sharp(photoResized)
-          .composite([{ input: glassSvg, blend: 'over' }])
+        const roundPhoto = await sharp(photoCropped)
+          .composite([{ input: circleMask, blend: 'dest-in' }])
+          .png()
+          .toBuffer();
+
+        let textBadge = '';
+        if (customText.trim()) {
+          const cleanText = customText.trim().replace(/[<>&'"]/g, '').substring(0, 22);
+          textBadge = `
+            <rect x="${fW / 2 - 110}" y="${circleY + circleR + 32}" width="220" height="36" rx="18" fill="#0f172a" fill-opacity="0.85" stroke="#d4af37" stroke-width="1.5"/>
+            <text x="${fW / 2}" y="${circleY + circleR + 55}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" letter-spacing="2" text-anchor="middle">${cleanText}</text>
+          `;
+        }
+
+        const matAndGlassSvg = Buffer.from(`
+          <svg width="${fW}" height="${fH}">
+            <defs>
+              <linearGradient id="glass" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+                <stop offset="30%" stop-color="#ffffff" stop-opacity="0.05"/>
+                <stop offset="70%" stop-color="#000000" stop-opacity="0.05"/>
+                <stop offset="100%" stop-color="#000000" stop-opacity="0.25"/>
+              </linearGradient>
+            </defs>
+            <!-- Passe-partout matte background -->
+            <rect width="${fW}" height="${fH}" fill="#faf8f5" fill-opacity="0.95"/>
+            
+            <!-- Elegant gold ring around circular photo opening -->
+            <circle cx="${circleX}" cy="${circleY}" r="${circleR + 3}" fill="none" stroke="#d4af37" stroke-width="5" stroke-opacity="0.95"/>
+            <circle cx="${circleX}" cy="${circleY}" r="${circleR + 6}" fill="none" stroke="#b45309" stroke-width="1.5" stroke-opacity="0.6"/>
+            <circle cx="${circleX}" cy="${circleY}" r="${circleR - 1}" fill="none" stroke="#000000" stroke-width="2" stroke-opacity="0.25"/>
+
+            ${textBadge}
+
+            <!-- Outer frame bevel inner shadow -->
+            <rect width="${fW}" height="${fH}" fill="none" stroke="#000000" stroke-width="5" stroke-opacity="0.35"/>
+            <!-- Glass shine reflection -->
+            <rect width="${fW}" height="${fH}" fill="url(#glass)"/>
+          </svg>
+        `);
+
+        const canvasComposite = await sharp(matAndGlassSvg)
+          .composite([{
+            input: roundPhoto,
+            top: circleY - circleR,
+            left: circleX - circleR,
+            blend: 'over'
+          }])
+          .png()
           .toBuffer();
 
         return await sharp(templatePath)
-          .composite([{ input: canvasFinal, top: 468, left: 196 }])
+          .composite([{ input: canvasComposite, top: 468, left: 190 }])
           .jpeg({ quality: 92 })
           .toBuffer();
       }
@@ -986,8 +1021,10 @@ private loadKaryawanData() {
 
       if (type === 'bantal') {
         const templatePath = path.join(templatesDir, 'template_bantal.jpg');
-        // Cushion print face: left=210, top=260, width=480, height=480
-        const bW = 480, bH = 480;
+        // Perfectly positioned on the cushion face, shifted slightly to the right to align with the visual bulk:
+        // Design size: 470x470, bLeft=254 (shifted 20px right from 234), bTop=281
+        const bW = 470, bH = 470;
+        const bLeft = 254, bTop = 281;
         const photoResized = await sharp(imageBuffer).resize(bW, bH, { fit: 'cover' }).toBuffer();
 
         const pillowMask = Buffer.from(`
@@ -1008,8 +1045,8 @@ private loadKaryawanData() {
         const pillowLighting = Buffer.from(`
           <svg width="${bW}" height="${bH}">
             <defs>
-              <radialGradient id="pillowRad" cx="45%" cy="45%" r="55%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"/>
+              <radialGradient id="pillowRad" cx="48%" cy="48%" r="55%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.14"/>
                 <stop offset="65%" stop-color="#000000" stop-opacity="0.06"/>
                 <stop offset="100%" stop-color="#000000" stop-opacity="0.36"/>
               </radialGradient>
@@ -1028,7 +1065,7 @@ private loadKaryawanData() {
           .toBuffer();
 
         return await sharp(templatePath)
-          .composite([{ input: pillowFinal, top: 260, left: 210 }])
+          .composite([{ input: pillowFinal, top: bTop, left: bLeft }])
           .jpeg({ quality: 92 })
           .toBuffer();
       }
