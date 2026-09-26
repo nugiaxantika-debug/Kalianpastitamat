@@ -570,7 +570,7 @@ private loadKaryawanData() {
     }
 
     private async generateProductMockup(
-      type: 'kaleng' | 'rokok' | 'cup' | 'case' | 'idcard',
+      type: 'kaleng' | 'rokok' | 'cup' | 'case' | 'idcard' | 'topi' | 'bingkai' | 'kaos' | 'bantal',
       imageBuffer: Buffer,
       customText: string = "",
       userName: string = "User"
@@ -838,6 +838,197 @@ private loadKaryawanData() {
 
         return await sharp(templatePath)
           .composite([{ input: idFinal, top: 615, left: 264 }])
+          .jpeg({ quality: 92 })
+          .toBuffer();
+      }
+
+      if (type === 'topi') {
+        const templatePath = path.join(templatesDir, 'template_topi.jpg');
+        // Cap front crown center: x=448, y=520. Patch: left=288, top=410, w=320, h=220
+        const patchW = 320, patchH = 220;
+        const photoResized = await sharp(imageBuffer).resize(patchW, patchH, { fit: 'cover' }).toBuffer();
+
+        const patchMask = Buffer.from(`
+          <svg width="${patchW}" height="${patchH}">
+            <rect width="${patchW}" height="${patchH}" rx="28" ry="28" fill="white"/>
+          </svg>
+        `);
+
+        let labelBadge = '';
+        if (customText.trim()) {
+          const cleanCustom = customText.trim().replace(/[<>&'"]/g, '').substring(0, 18);
+          labelBadge = `
+            <rect x="15" y="${patchH - 42}" width="${patchW - 30}" height="32" rx="16" fill="#000000" fill-opacity="0.8"/>
+            <text x="${patchW / 2}" y="${patchH - 20}" font-size="15" font-family="sans-serif" font-weight="900" fill="#ffffff" letter-spacing="1" text-anchor="middle">${cleanCustom}</text>
+          `;
+        }
+
+        const patchBorder = Buffer.from(`
+          <svg width="${patchW}" height="${patchH}">
+            <defs>
+              <linearGradient id="crownShine" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#000000" stop-opacity="0.30"/>
+                <stop offset="25%" stop-color="#ffffff" stop-opacity="0.12"/>
+                <stop offset="60%" stop-color="#ffffff" stop-opacity="0.04"/>
+                <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
+              </linearGradient>
+            </defs>
+            <rect width="${patchW}" height="${patchH}" rx="28" ry="28" fill="url(#crownShine)"/>
+            <rect width="${patchW}" height="${patchH}" rx="28" ry="28" fill="none" stroke="#ffffff" stroke-width="5" stroke-opacity="0.9"/>
+            <rect width="${patchW}" height="${patchH}" rx="28" ry="28" fill="none" stroke="#000000" stroke-width="2" stroke-dasharray="6,4" stroke-opacity="0.45"/>
+            ${labelBadge}
+          </svg>
+        `);
+
+        const patchFinal = await sharp(photoResized)
+          .composite([
+            { input: patchMask, blend: 'dest-in' },
+            { input: patchBorder, blend: 'over' }
+          ])
+          .png()
+          .toBuffer();
+
+        return await sharp(templatePath)
+          .composite([{ input: patchFinal, top: 410, left: 288 }])
+          .jpeg({ quality: 92 })
+          .toBuffer();
+      }
+
+      if (type === 'bingkai') {
+        const templatePath = path.join(templatesDir, 'template_bingkai.jpg');
+        // Wooden frame inner canvas opening: left=196, top=468, width=422, height=556
+        const fW = 422, fH = 556;
+        const photoResized = await sharp(imageBuffer).resize(fW, fH, { fit: 'cover' }).toBuffer();
+
+        let plaqueOverlay = '';
+        if (customText.trim()) {
+          const cleanText = customText.trim().replace(/[<>&'"]/g, '').substring(0, 24);
+          plaqueOverlay = `
+            <rect x="${fW / 2 - 120}" y="${fH - 46}" width="240" height="34" rx="6" fill="#0f172a" fill-opacity="0.85" stroke="#ffffff" stroke-width="1"/>
+            <text x="${fW / 2}" y="${fH - 24}" font-size="13" font-family="sans-serif" font-weight="bold" fill="#ffffff" letter-spacing="1" text-anchor="middle">${cleanText}</text>
+          `;
+        }
+
+        const glassSvg = Buffer.from(`
+          <svg width="${fW}" height="${fH}">
+            <defs>
+              <linearGradient id="glassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+                <stop offset="35%" stop-color="#ffffff" stop-opacity="0.04"/>
+                <stop offset="70%" stop-color="#000000" stop-opacity="0.06"/>
+                <stop offset="100%" stop-color="#000000" stop-opacity="0.24"/>
+              </linearGradient>
+            </defs>
+            <rect width="${fW}" height="${fH}" fill="url(#glassGrad)"/>
+            <rect width="${fW}" height="${fH}" fill="none" stroke="#000000" stroke-width="4" stroke-opacity="0.4"/>
+            ${plaqueOverlay}
+          </svg>
+        `);
+
+        const canvasFinal = await sharp(photoResized)
+          .composite([{ input: glassSvg, blend: 'over' }])
+          .toBuffer();
+
+        return await sharp(templatePath)
+          .composite([{ input: canvasFinal, top: 468, left: 196 }])
+          .jpeg({ quality: 92 })
+          .toBuffer();
+      }
+
+      if (type === 'kaos') {
+        const templatePath = path.join(templatesDir, 'template_kaos.jpg');
+        // T-shirt chest print area: left=244, top=450, width=360, height=430
+        const tW = 360, tH = 430;
+        const photoResized = await sharp(imageBuffer).resize(tW, tH, { fit: 'cover' }).toBuffer();
+
+        const shirtMask = Buffer.from(`
+          <svg width="${tW}" height="${tH}">
+            <rect width="${tW}" height="${tH}" rx="16" ry="16" fill="white"/>
+          </svg>
+        `);
+
+        let brandTextOverlay = '';
+        if (customText.trim()) {
+          const cleanCustom = customText.trim().replace(/[<>&'"]/g, '').substring(0, 20);
+          brandTextOverlay = `
+            <rect x="25" y="${tH - 48}" width="${tW - 50}" height="36" rx="8" fill="#0f172a" fill-opacity="0.9"/>
+            <text x="${tW / 2}" y="${tH - 25}" font-size="15" font-family="sans-serif" font-weight="900" fill="#ffffff" letter-spacing="2" text-anchor="middle">${cleanCustom}</text>
+          `;
+        }
+
+        const shirtLighting = Buffer.from(`
+          <svg width="${tW}" height="${tH}">
+            <defs>
+              <linearGradient id="shirtShine" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#000000" stop-opacity="0.14"/>
+                <stop offset="35%" stop-color="#ffffff" stop-opacity="0.08"/>
+                <stop offset="100%" stop-color="#000000" stop-opacity="0.18"/>
+              </linearGradient>
+            </defs>
+            <rect width="${tW}" height="${tH}" rx="16" ry="16" fill="url(#shirtShine)"/>
+            ${brandTextOverlay}
+          </svg>
+        `);
+
+        const shirtFinal = await sharp(photoResized)
+          .composite([
+            { input: shirtMask, blend: 'dest-in' },
+            { input: shirtLighting, blend: 'over' }
+          ])
+          .png()
+          .toBuffer();
+
+        return await sharp(templatePath)
+          .composite([{ input: shirtFinal, top: 450, left: 244 }])
+          .jpeg({ quality: 92 })
+          .toBuffer();
+      }
+
+      if (type === 'bantal') {
+        const templatePath = path.join(templatesDir, 'template_bantal.jpg');
+        // Cushion print face: left=210, top=260, width=480, height=480
+        const bW = 480, bH = 480;
+        const photoResized = await sharp(imageBuffer).resize(bW, bH, { fit: 'cover' }).toBuffer();
+
+        const pillowMask = Buffer.from(`
+          <svg width="${bW}" height="${bH}">
+            <rect width="${bW}" height="${bH}" rx="85" ry="85" fill="white"/>
+          </svg>
+        `);
+
+        let pillowLabel = '';
+        if (customText.trim()) {
+          const cleanCustom = customText.trim().replace(/[<>&'"]/g, '').substring(0, 22);
+          pillowLabel = `
+            <rect x="${bW / 2 - 130}" y="${bH - 58}" width="260" height="38" rx="19" fill="#000000" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.5"/>
+            <text x="${bW / 2}" y="${bH - 33}" font-size="15" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">${cleanCustom}</text>
+          `;
+        }
+
+        const pillowLighting = Buffer.from(`
+          <svg width="${bW}" height="${bH}">
+            <defs>
+              <radialGradient id="pillowRad" cx="45%" cy="45%" r="55%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"/>
+                <stop offset="65%" stop-color="#000000" stop-opacity="0.06"/>
+                <stop offset="100%" stop-color="#000000" stop-opacity="0.36"/>
+              </radialGradient>
+            </defs>
+            <rect width="${bW}" height="${bH}" rx="85" ry="85" fill="url(#pillowRad)"/>
+            ${pillowLabel}
+          </svg>
+        `);
+
+        const pillowFinal = await sharp(photoResized)
+          .composite([
+            { input: pillowMask, blend: 'dest-in' },
+            { input: pillowLighting, blend: 'over' }
+          ])
+          .png()
+          .toBuffer();
+
+        return await sharp(templatePath)
+          .composite([{ input: pillowFinal, top: 260, left: 210 }])
           .jpeg({ quality: 92 })
           .toBuffer();
       }
@@ -1742,7 +1933,19 @@ private loadKaryawanData() {
     const fakecallCommands = ['.fakecallmenu', 'fakecallmenu', '.fakecallandroid', 'fakecallandroid', '.fakecalliphone', 'fakecalliphone', '.fakevidcalliphone', 'fakevidcalliphone'];
     const iqcCommands = ['.iqcmenu', 'iqcmenu', '.iqc', 'iqc', '.iqcpink', 'iqcpink', '.iqcmerah', 'iqcmerah', '.iqcbiru', 'iqcbiru', '.iqckuning', 'iqckuning'];
     const gameCommands = ['.gamemenu', 'gamemenu', '.tebakgambar', 'tebakgambar', '.susunkata', 'susunkata', '.math', 'math', '.tebakkata', 'tebakkata', '.tebakbendera', 'tebakbendera', '.asahotak', 'asahotak', '.tebaklirik', 'tebaklirik', '.tekateki', 'tekateki', '.tebakangka', 'tebakangka', '.kuis', 'kuis', '.tebakkota', 'tebakkota', '.family100', 'family100', '.tebakusia', 'tebakusia', '.tebakkimia', 'tebakkimia', '.tebakbuah', 'tebakbuah', '.werewolf', 'werewolf', '.tebakuang', 'tebakuang', '.tebaksurah', 'tebaksurah', '.tebakhewan', 'tebakhewan', '.tebakbaju', 'tebakbaju', '.tebakcelana', 'tebakcelana', '.tebakmakanan', 'tebakmakanan', '.tebakjkt48', 'tebakjkt48', '.togel', 'togel', '.stoptogel', 'stoptogel', '.truthordare', 'truthordare', '.ulartangga', 'ulartangga'];
-    const gabutCommands = ['.gabutmenu', 'gabutmenu', '.cminkaleng', 'cminkaleng', '.minkaleng', 'minkaleng', '.ckotrokok', 'ckotrokok', '.kotrokok', 'kotrokok', '.cpapercup', 'cpapercup', '.papercup', 'papercup', '.cjerigen', 'cjerigen', '.csoftcasehp', 'csoftcasehp', '.softcasehp', 'softcasehp', '.cidcard', 'cidcard', '.idcard', 'idcard'];
+    const gabutCommands = [
+      '.gabutmenu', 'gabutmenu',
+      '.cminkaleng', 'cminkaleng', '.minkaleng', 'minkaleng',
+      '.ckotrokok', 'ckotrokok', '.kotrokok', 'kotrokok',
+      '.cpapercup', 'cpapercup', '.papercup', 'papercup',
+      '.cjerigen', 'cjerigen',
+      '.csoftcasehp', 'csoftcasehp', '.softcasehp', 'softcasehp',
+      '.cidcard', 'cidcard', '.idcard', 'idcard',
+      '.ctopi', 'ctopi', '.topi', 'topi',
+      '.cbingkai', 'cbingkai', '.bingkai', 'bingkai',
+      '.ckaos', 'ckaos', '.kaos', 'kaos', '.chaos', 'chaos',
+      '.cbantal', 'cbantal', '.bantal', 'bantal'
+    ];
     const premiumCommands = ['.limit', 'limit', '.ai', 'ai']; // Placeholder for premium restricted commands
     
     if (ownerCommands.includes(requestedCmd) && !isOwner) {
@@ -1967,6 +2170,10 @@ Ketik menu yang kamu inginkan.`;
 │ .cpapercup [teks]
 │ .csoftcasehp [teks]
 │ .cidcard [teks]
+│ .ctopi [teks]
+│ .cbingkai [teks]
+│ .ckaos [teks] (atau .chaos)
+│ .cbantal [teks]
 
 _Kirim atau balas/reply foto dengan perintah di atas. Jika tanpa foto, otomatis menggunakan foto profil WhatsApp._`;
       await this.sendMenuWithCover(jid, gabutText, this.getFakeMenuQuote(senderJid, msg.pushName || "User"));
@@ -7552,6 +7759,24 @@ Link referensi: ${randomItem.link}` }, { quoted: msg });
         body.toLowerCase().startsWith("cidcard") ||
         body.toLowerCase().startsWith(".idcard") ||
         body.toLowerCase().startsWith("idcard") ||
+        body.toLowerCase().startsWith(".ctopi") ||
+        body.toLowerCase().startsWith("ctopi") ||
+        body.toLowerCase().startsWith(".topi") ||
+        body.toLowerCase().startsWith("topi") ||
+        body.toLowerCase().startsWith(".cbingkai") ||
+        body.toLowerCase().startsWith("cbingkai") ||
+        body.toLowerCase().startsWith(".bingkai") ||
+        body.toLowerCase().startsWith("bingkai") ||
+        body.toLowerCase().startsWith(".ckaos") ||
+        body.toLowerCase().startsWith("ckaos") ||
+        body.toLowerCase().startsWith(".kaos") ||
+        body.toLowerCase().startsWith("kaos") ||
+        body.toLowerCase().startsWith(".chaos") ||
+        body.toLowerCase().startsWith("chaos") ||
+        body.toLowerCase().startsWith(".cbantal") ||
+        body.toLowerCase().startsWith("cbantal") ||
+        body.toLowerCase().startsWith(".bantal") ||
+        body.toLowerCase().startsWith("bantal") ||
         body.toLowerCase() === "gabutmenu" ||
         body.toLowerCase() === ".gabutmenu"
      ) {
@@ -7565,6 +7790,10 @@ Link referensi: ${randomItem.link}` }, { quoted: msg });
 │ .cpapercup [teks]
 │ .csoftcasehp [teks]
 │ .cidcard [teks]
+│ .ctopi [teks]
+│ .cbingkai [teks]
+│ .ckaos [teks] (atau .chaos)
+│ .cbantal [teks]
 
 _Kirim atau balas/reply foto dengan perintah di atas. Jika tanpa foto, otomatis menggunakan foto profil WhatsApp._`;
           await this.sock.sendMessage(jid, { text: gabutText, contextInfo: this.getMenuContextInfo() }, { quoted: this.getFakeMenuQuote(senderJid, msg.pushName || "User") });
@@ -7572,7 +7801,7 @@ _Kirim atau balas/reply foto dengan perintah di atas. Jika tanpa foto, otomatis 
           return;
         }
 
-        let mockupType: "kaleng" | "rokok" | "cup" | "case" | "idcard" | null = null;
+        let mockupType: "kaleng" | "rokok" | "cup" | "case" | "idcard" | "topi" | "bingkai" | "kaos" | "bantal" | null = null;
         let labelName = "";
         let captionEmoji = "🎁";
 
@@ -7596,6 +7825,22 @@ _Kirim atau balas/reply foto dengan perintah di atas. Jika tanpa foto, otomatis 
           mockupType = "idcard";
           labelName = "Lanyard ID Card";
           captionEmoji = "🪪";
+        } else if (rawCmd === "ctopi" || rawCmd === "topi") {
+          mockupType = "topi";
+          labelName = "Topi";
+          captionEmoji = "🧢";
+        } else if (rawCmd === "cbingkai" || rawCmd === "bingkai") {
+          mockupType = "bingkai";
+          labelName = "Bingkai Foto";
+          captionEmoji = "🖼️";
+        } else if (rawCmd === "ckaos" || rawCmd === "kaos" || rawCmd === "chaos") {
+          mockupType = "kaos";
+          labelName = "Kaos";
+          captionEmoji = "👕";
+        } else if (rawCmd === "cbantal" || rawCmd === "bantal") {
+          mockupType = "bantal";
+          labelName = "Bantal";
+          captionEmoji = "🛋️";
         }
 
         if (!mockupType) {
@@ -7610,6 +7855,14 @@ _Kirim atau balas/reply foto dengan perintah di atas. Jika tanpa foto, otomatis 
             mockupType = "case"; labelName = "Softcase HP"; captionEmoji = "📱";
           } else if (lBody.startsWith(".cidcard") || lBody.startsWith("cidcard") || lBody.startsWith(".idcard") || lBody.startsWith("idcard")) {
             mockupType = "idcard"; labelName = "Lanyard ID Card"; captionEmoji = "🪪";
+          } else if (lBody.startsWith(".ctopi") || lBody.startsWith("ctopi") || lBody.startsWith(".topi") || lBody.startsWith("topi")) {
+            mockupType = "topi"; labelName = "Topi"; captionEmoji = "🧢";
+          } else if (lBody.startsWith(".cbingkai") || lBody.startsWith("cbingkai") || lBody.startsWith(".bingkai") || lBody.startsWith("bingkai")) {
+            mockupType = "bingkai"; labelName = "Bingkai Foto"; captionEmoji = "🖼️";
+          } else if (lBody.startsWith(".ckaos") || lBody.startsWith("ckaos") || lBody.startsWith(".kaos") || lBody.startsWith("kaos") || lBody.startsWith(".chaos") || lBody.startsWith("chaos")) {
+            mockupType = "kaos"; labelName = "Kaos"; captionEmoji = "👕";
+          } else if (lBody.startsWith(".cbantal") || lBody.startsWith("cbantal") || lBody.startsWith(".bantal") || lBody.startsWith("bantal")) {
+            mockupType = "bantal"; labelName = "Bantal"; captionEmoji = "🛋️";
           }
         }
 
